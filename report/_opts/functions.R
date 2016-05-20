@@ -1,10 +1,10 @@
 
 ##' Functions
 ##' =========
-##' 
+##'
 ##' Custom functions I use for my analysis (those that don't warrant
 ##' their own package developed).
-##' 
+##'
 
 med <- function(x) {
     round(median(x, na.rm = TRUE), 1)
@@ -103,10 +103,11 @@ chiSqPval <- function(factor1, factor2) {
       head(1)['p']
 }
 
-geeDF <- function(data, exposure, outcomes, covariates, renaming, pool.unit = '') {
+
+geeDF <- function(data, exposure, outcomes, covariates, renaming, pool.unit = '', p.adj = TRUE) {
     data %>%
       loopGEE(., outcomes, exposure, 'SID', covariates, corstr = 'ar1',
-              filter.indep = TRUE, adjust.p.value = TRUE) %>%
+              filter.indep = TRUE, adjust.p.value = p.adj) %>%
       mutate(estimate = (exp(estimate) - 1) * 100,
              conf.low = (exp(conf.low) - 1) * 100,
              conf.high = (exp(conf.high) - 1) * 100) %>%
@@ -123,17 +124,17 @@ plotForestGEE <- function(data, ylab, xlab.var.types = 'fatty acids.') {
       plotForest(., pvalue.factor = 'f.pvalue', groups = 'pool ~ dep',
                  x.axis.label = paste0('Percent difference with 95% CI in the outcomes\nfor each SD increase in ', xlab.var.types),
                  y.axis.label = ylab) +
-      theme_tufte(10) +
-      theme(axis.text.y = element_text(face=ifelse(grepl('Total', data$indep), "bold", "plain")), 
+      theme_tufte(base_family = 'Arial') +
+      theme(axis.text.y = element_text(face=ifelse(grepl('Total', data$indep), "bold", "plain")),
             legend.key.width = unit(0.7, "line"),
             legend.key.height = unit(0.7, "line"),
-            strip.background = element_rect(fill = 'grey90', colour = 'grey90'),
+            strip.background = element_blank(), #element_rect(fill = 'grey90', colour = 'grey90'),
             plot.margin = unit(c(0.5, 0, 0, 0), "cm")
-            )
-
+            ) +
+      scale_x_continuous(breaks = c(-10, -5, 0, 5, 10))
 }
 
-theme_simple <- function(base_size = 12, base_family = "Helvetica")
+theme_simple <- function(base_size = 12, base_family = "Arial")
   {
   theme_bw(base_size = base_size, base_family = base_family) %+replace%
       theme(
@@ -144,7 +145,7 @@ theme_simple <- function(base_size = 12, base_family = "Helvetica")
            )
   }
 
-theme_nothing <- function(base_size = 12, base_family = "Helvetica")
+theme_nothing <- function(base_size = 12, base_family = "Arial")
   {
   theme_bw(base_size = base_size, base_family = base_family) %+replace%
       theme(
@@ -171,14 +172,15 @@ geeInteractDF <- function(data, outcomes, exposures,
 
 plotManhattanGEE <- function(data, ylab) {
     data %>%
-      plotManhattanStyle(., 'indep', 'p.value', groups = 'pool ~ dep',
+        mutate(fraction = factor(fraction, unique(fraction), ordered = TRUE)) %>%
+      plotManhattanStyle(., 'Xterms', 'p.value', groups = 'fraction ~ Yterms',
                      y.axis.label = ylab) +
-      theme_tufte(10) +
+      theme_tufte(10, base_family = 'Arial') +
       theme(axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0),
-            strip.background = element_rect(fill = 'grey90', colour = 'grey90'),
+            strip.background = element_rect(fill = 'grey95', colour = 'grey95'),
             panel.grid.minor = element_blank(),
             panel.grid.major = element_blank(),
-            axis.text.y = element_text(face=ifelse(grepl('Total', data$indep), "bold", "plain"))) +
+            axis.text.y = element_text(face=ifelse(grepl('Total', levels(data$Xterms)), "bold", "plain"))) +
       theme(legend.key.width = unit(0.85, "line"),
             legend.key.height = unit(0.85, "line"),
             plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), "cm")
@@ -191,11 +193,11 @@ table_geeDF <- function(data) {
                             trim(format(round(conf.low, 1), nsmall = 1)), ', ',
                             trim(format(round(conf.high, 1), nsmall = 1)), ')',
                             ifelse(p.value < 0.05, '*', ' '))) %>%
-      select(orderno, indep, dep, estCI) %>%
-      spread(dep, estCI) %>%
-      arrange(orderno, desc(indep)) %>%
+      select(orderno, Yterms, Xterms, estCI) %>%
+      spread(Yterms, estCI) %>%
+      arrange(orderno, desc(Xterms)) %>%
       select(-orderno) %>%
-      rename(Species = indep) %>%
+      rename(Species = Xterms) %>%
       pander(justify = c('left', rep('right', 4)))
 }
 
@@ -252,7 +254,7 @@ figRef <- local({
     tag <- numeric()
     created <- logical()
     used <- logical()
-    function(label, caption, prefix = options("figcap.prefix"), 
+    function(label, caption, prefix = options("figcap.prefix"),
         sep = options("figcap.sep"), prefix.highlight = options("figcap.prefix.highlight")) {
         i <- which(names(tag) == label)
         if (length(i) == 0) {
@@ -266,7 +268,7 @@ figRef <- local({
         }
         if (!missing(caption)) {
             created[label] <<- TRUE
-            paste0(prefix.highlight, prefix, " ", i, sep, prefix.highlight, 
+            paste0(prefix.highlight, prefix, " ", i, sep, prefix.highlight,
                 " ", caption)
         } else {
             used[label] <<- TRUE
@@ -279,7 +281,7 @@ supFigRef <- local({
     tag <- numeric()
     created <- logical()
     used <- logical()
-    function(label, caption, prefix = options("supfigcap.prefix"), 
+    function(label, caption, prefix = options("supfigcap.prefix"),
         sep = options("figcap.sep"), prefix.highlight = options("figcap.prefix.highlight")) {
         i <- which(names(tag) == label)
         if (length(i) == 0) {
@@ -293,7 +295,7 @@ supFigRef <- local({
         }
         if (!missing(caption)) {
             created[label] <<- TRUE
-            paste0(prefix.highlight, prefix, " ", i, sep, prefix.highlight, 
+            paste0(prefix.highlight, prefix, " ", i, sep, prefix.highlight,
                 " ", caption)
         } else {
             used[label] <<- TRUE
@@ -306,7 +308,7 @@ supTabRef <- local({
     tag <- numeric()
     created <- logical()
     used <- logical()
-    function(label, caption, prefix = options("suptabcap.prefix"), 
+    function(label, caption, prefix = options("suptabcap.prefix"),
         sep = options("tabcap.sep"), prefix.highlight = options("tabcap.prefix.highlight")) {
         i <- which(names(tag) == label)
         if (length(i) == 0) {
@@ -320,7 +322,7 @@ supTabRef <- local({
         }
         if (!missing(caption)) {
             created[label] <<- TRUE
-            paste0(prefix.highlight, prefix, " ", i, sep, prefix.highlight, 
+            paste0(prefix.highlight, prefix, " ", i, sep, prefix.highlight,
                 " ", caption)
         } else {
             used[label] <<- TRUE
@@ -333,7 +335,7 @@ tabRef <- local({
     tag <- numeric()
     created <- logical()
     used <- logical()
-    function(label, caption, prefix = options("tabcap.prefix"), 
+    function(label, caption, prefix = options("tabcap.prefix"),
         sep = options("tabcap.sep"), prefix.highlight = options("tabcap.prefix.highlight")) {
         i <- which(names(tag) == label)
         if (length(i) == 0) {
@@ -347,7 +349,7 @@ tabRef <- local({
         }
         if (!missing(caption)) {
             created[label] <<- TRUE
-            paste0(prefix.highlight, prefix, " ", i, sep, prefix.highlight, 
+            paste0(prefix.highlight, prefix, " ", i, sep, prefix.highlight,
                 " ", caption)
         } else {
             used[label] <<- TRUE
@@ -359,14 +361,14 @@ tabRef <- local({
 checkFigTabNumbering <- function(ref.function) {
     if (!all(environment(ref.function)$used)) {
         missingRef <- which(!environment(ref.function)$used)
-        warning("Figure(s) ", paste(missingRef, sep = ", "), " with label(s) '", 
-                paste(names(environment(ref.function)$used)[missingRef], sep = "', '"), 
+        warning("Figure(s) ", paste(missingRef, sep = ", "), " with label(s) '",
+                paste(names(environment(ref.function)$used)[missingRef], sep = "', '"),
                 "' are present in the document but are never referred to in the text.")
     }
     if (!all(environment(ref.function)$used)) {
         missingRef <- which(!environment(ref.function)$used)
-        warning("Figure(s) ", paste(missingRef, sep = ", "), " with label(s) '", 
-                paste(names(environment(ref.function)$used)[missingRef], sep = "', '"), 
+        warning("Figure(s) ", paste(missingRef, sep = ", "), " with label(s) '",
+                paste(names(environment(ref.function)$used)[missingRef], sep = "', '"),
                 "' are present in the document but are never referred to in the text.")
     }
 }
@@ -431,7 +433,7 @@ plotInteract <- function(data, y, x,
                          include.lowest=TRUE, labels = lvl.labs),
              VN = factor(VN, ordered = TRUE))
 
-    fit <- 
+    fit <-
         geeglm(geeFormula, id = SID, family = gaussian,
                corstr = 'ar1', data = prep.fit)
 
@@ -448,9 +450,9 @@ plotInteract <- function(data, y, x,
       scale_shape_discrete('Percentile') +
       scale_linetype_discrete('Percentile') +
       scale_x_discrete('Visit number', labels = c('0-yr', '3-yrs', '6-yrs')) +
-      theme_tufte() +
+      theme_tufte(10, base_family = 'Arial') +
       theme(legend.position = 'bottom',
-            strip.background = element_rect(fill = 'grey90', colour = 'grey90'),
+            strip.background = element_rect(fill = 'grey95', colour = 'grey95'),
             plot.margin = unit(c(0.5, 0, 0, 0), "cm"),
             legend.key.width = unit(0.75, "line"),
             legend.key.height = unit(0.75, "line")
@@ -460,4 +462,111 @@ plotInteract <- function(data, y, x,
       ylab(y.axis.label) +
       ggtitle(paste0(title, ': ', fatty.acid.name)) +
       theme(plot.title = element_text(hjust = 0, vjust = 1))
+}
+
+# Analyze -----------------------------------------------------------------
+
+analyze_gee <- function(data, y, x, covar, unit,
+                        adj.p = TRUE, adj.p.method = 'BH', int = FALSE) {
+    if (int) {
+        extract_term <- ':'
+    } else {
+        extract_term <- 'Xterm$'
+    }
+    gee_results <- data %>%
+        mason::design('gee', family = gaussian, corstr = 'ar1') %>%
+        {
+            if (int) {
+                mason::lay_base(., 'SID', y, x, covar, intvar = 'VN')
+
+            } else {
+                mason::lay_base(., 'SID', y, x, covar)
+            }
+        } %>%
+        mason::build() %>%
+        mason::polish(
+            extract_term, adjust.p = FALSE,
+            transform.beta.funs = function(x)
+                (exp(x) - 1) * 100,
+            rename.vars.funs = renaming_list
+        ) %>%
+        dplyr::mutate(
+            unit = unit,
+            order1 = substr(Xterms, nchar(Xterms), nchar(Xterms)),
+            order1 = ifelse(order1 == 0, 10, order1),
+            order1 = ifelse(order1 == ')', 20, order1),
+            order2 = substr(Xterms, 1, 2),
+            order1 = as.integer(order1),
+            Yterms = factor(Yterms,
+                            levels = c('log(1/HOMA-IR)', 'log(ISI)',
+                                       'log(IGI/IR)', 'log(ISSI-2)'),
+                            ordered = TRUE)
+        ) %>%
+        dplyr::arrange(desc(order1), Yterms) %>%
+        tidyr::separate(Xterms, into = c('fraction', 'Xterms'), sep = '_') %>%
+        dplyr::mutate(fraction = renaming_fraction(fraction),
+                      Xterms = factor(Xterms, unique(Xterms)))
+
+    if (adj.p) {
+        gee_results <- gee_results %>%
+            dplyr::mutate(p.value = p.adjust(p.value, method = adj.p.method))
+    }
+
+    return(gee_results)
+}
+
+plot_gee_results <- function(results.gee) {
+    data <- results.gee %>%
+        mutate(Xterms = Xterms %>% factor(., unique(.)),
+               fraction = factor(fraction, unique(fraction), ordered = TRUE))
+    data %>%
+        seer::trance('main_effect') %>%
+        seer::visualize(groups = 'fraction~Yterms',
+                        xlab = 'Percent difference with 95% CI in the outcomes\nfor each SD increase in fatty acid',
+                        ylab = 'Fatty acids') %>%
+        seer::vision_simple(10, legend.position = 'right') +
+        ggplot2::theme(
+            axis.text.y = element_text(face = ifelse(
+                levels(data$Xterms) == 'Total (mole)', "bold", "plain"
+            )),
+            legend.key.width = grid::unit(0.75, "line"),
+            legend.key.height = grid::unit(0.75, "line"),
+            panel.margin = grid::unit(0.75, "lines")
+        ) +
+        ggplot2::scale_alpha_discrete(name = 'FDR-adjusted\np-value',
+                                      range = c(1.0, 1.0)) +
+        ggplot2::scale_size_discrete(name = 'FDR-adjusted\np-value',
+                                     range = c(0.75, 4)) +
+        ggplot2::facet_grid(fraction~Yterms, scale = 'free_y') +
+        scale_color_grey(start = 0.75, end = 0, name = 'FDR-adjusted\np-value') +
+        scale_x_continuous(breaks = c(-10, -5, 0, 5, 10))
+}
+
+renaming_outcomes <- function(x) {
+    x %>%
+        gsub('linvHOMA', 'log(1/HOMA-IR)', .) %>%
+        gsub('lISI', 'log(ISI)', .) %>%
+        gsub('lIGIIR', 'log(IGI/IR)', .) %>%
+        gsub('lISSI2', 'log(ISSI-2)', .)
+}
+
+renaming_fa <- function(x) {
+    x %>%
+        gsub('(.*)(\\d\\d)(\\d)', '\\1_\\2:\\3', .) %>%
+        gsub('n(\\d)$', 'n-\\1', .) %>%
+        gsub('D(\\d\\d)$', 'D-\\1', .) %>%
+        gsub('^pct_', '', .) %>%
+        gsub('Total', 'Total (mole)', .)
+}
+
+renaming_fraction <- function(x) {
+    x %>%
+        gsub('CE|ce', 'Cholesteryl esters', .) %>%
+        gsub('PL|pl', 'Phospholipids', .)
+}
+
+renaming_list <- function(x) {
+    x %>%
+        renaming_fa() %>%
+        renaming_outcomes()
 }

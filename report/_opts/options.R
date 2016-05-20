@@ -1,7 +1,7 @@
-##' 
+##'
 ##' Code preamble
 ##' =============
-##' 
+##'
 
 ##' Load relevant libraries
 library(ggplot2)
@@ -19,6 +19,7 @@ library(lsmeans)
 library(MuMIn)
 library(ggthemes)
 library(captioner)
+library(showtext)
 
 ##' Source personal functions, or install (or update) custom functions
 ##' in a package (to install from github, needs devtools)
@@ -34,11 +35,12 @@ panderOptions('table.alignment.default',
 
 ##' Knitr global options
 knitr::opts_chunk$set(warning = FALSE, echo = FALSE,
-                      fig.width = 8, dpi = 150,
-                      message = FALSE, dev = c('png', 'pdf'))
+                      fig.width = 8, dpi = 300,
+                      message = FALSE, dev = c('png', 'pdf', 'postscript'),
+                      fig.showtext = TRUE)
 
 ##' For the table and figure references
 options(tabcap.prefix = "Table", suptabcap.prefix = "Supplemental Table",
         tabcap.sep = ":", tabcap.prefix.highlight = "**",
-        figcap.prefix = "Figure", supfigcap.prefix = "Supplemental Figure",
+        figcap.prefix = "Figure", supfigcap.prefix = "Supplemental Fig.",
         figcap.sep = ":", figcap.prefix.highlight = "**")

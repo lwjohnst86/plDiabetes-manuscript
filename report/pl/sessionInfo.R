@@ -1,5 +1,4 @@
-source('../_opts/options.R')
-source('../_opts/functions.R')
+suppressPackageStartupMessages(source('../_opts/options.R'))
 
 sessionInfo()
 
